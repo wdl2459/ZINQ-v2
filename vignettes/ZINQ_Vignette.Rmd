@@ -1,0 +1,131 @@
+---
+title: "ZINQ Package Vignette"
+author: "Wodan Ling and Michael C. Wu"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ZINQ_Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+options(width=999,
+        rmarkdown.html_vignette.check_title = FALSE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{css, echo=FALSE}
+    body .main-container {
+      max-width: 1280px !important;
+      width: 1280px !important;
+    }
+    body {
+      max-width: 1280px !important;
+    }
+```
+
+# Overview
+
+The ZINQ package (v1.0) contains functions that conduct univariate association test between microbiome data and clinical variable(s). The microbiome data can be unnormalized
+or normalized by any existing method, such as rarefaction, TSS, CSS, etc.. The clinical variable(s) can be a single binary, multi-class discrete or continuous variable, or a set
+of variables consisting of any type of the aformentioned variables. Both unadjusted and adjusted tests can be implemented. 
+
+The following packages are required for functions and examples in the ZINQ package: quantreg, MASS, both are available on CRAN.
+
+```{r setup}
+library(ZINQ)
+```
+
+
+# Implementation of ZINQ test
+
+## Sanity check
+
+It is recommended to do sanity check using **ZINQ_check** before applying ZINQ. The inputs are the un-normalized taxa read count table and metadata. It it is necessary, the function will print warnings when
+
+* Library size is a confounder of the variable(s) of interest. ZINQ might not properly control type I error, since it treats zeroes and non-zeroes differently. 
+* For each taxon:
+    + All read counts are zero. ZINQ will return a singularity error. 
+    + There are limited non-zero read counts (<30 or <15). Recommended settings of ZINQ will be provided. 
+    + There is a perfect separation, e.g., there are all zeroes in one group (case or control). ZINQ will return NA. 
+
+Type **warnings()** after the sanity check to read the warnings. The warnings are recommendations for applying ZINQ to the data.
+
+The sanity check is mainly about zero inflation. Most normalizations will keep the original zeroes, thus investigaing the un-normalized taxa read count table provides sufficient clues to use ZINQ. ZINQ will also return singularity errors when too many covariates are specified, as in other regression frameworks. For more details, refer to the .pdf manual.
+
+
+## Sample data
+
+We will use the sample data in the package to demonstrate the ZINQ test. The data contains normalized abundance of two taxa: rarefied abundance of taxon 1 and CSS normalized abundance of taxon 2. Also, it contains a binary clinical variable, which is of interest, and three continuous covariates for adjustment. In total, there are 531 subject. We want to determine whether the two taxa are associated with the binary clinical variable. 
+
+```{r}
+data(Sample_Data)
+summary(Sample_Data)
+```
+
+## Use of ZINQ_tests
+
+We first use ZINQ_tests to conduct marginal test for logistic and quantile regression components, for each of the two taxa.
+
+```{r}
+covariates = Sample_Data[, -c(1:2)]
+
+result = vector(mode = "list", length = 2)
+
+dat = cbind(Y=Sample_Data[, 1], covariates)
+result[[1]] = ZINQ_tests(formula.logistic=Y~X+Z1+Z2+Z3, formula.quantile=Y~X+Z1+Z2+Z3, C="X", y_CorD = "D", data=dat)
+
+dat = cbind(Y=Sample_Data[, 2], covariates)
+result[[2]] = ZINQ_tests(formula.logistic=Y~X+Z1+Z2+Z3, formula.quantile=Y~X+Z1+Z2+Z3, C="X", data=dat)
+```
+
+## Use of ZINQ_combination
+
+Next, we use the output from ZINQ_tests as the input of ZINQ_combination to obtain the final p-values.
+
+```{r}
+ZINQ_combination(result[[1]], method="Cauchy", taus=c(0.25, 0.5, 0.75))
+ZINQ_combination(result[[2]], method="MinP")
+```
+
+
+# Characteristics of ZINQ test
+
+ZINQ can detect higher-order associations beyond the simple mean association. The two taxa in the sample data have typical abundance profiles that highlight the power of ZINQ. Their stratified quantile functions according to the two conditions of the clinical variable form a spindle shape or cross with each other. We will use linear regression to show the inadequacy of mean-based methods for the two cases. 
+
+```{r, fig.height = 5, fig.width = 10, fig.align = "center"}
+taus= seq(0.01, 0.99, by=0.01)
+
+par(mfrow=c(1,2))
+
+for (ii in 1:2){
+  id1 = which(Sample_Data$X == 1)
+  id0 = which(Sample_Data$X == 0)
+
+  abundance1 = Sample_Data[id1, ii]
+  abundance0 = Sample_Data[id0, ii]
+
+  q1 = quantile(abundance1, taus)
+  q0 = quantile(abundance0, taus)
+
+  plot(taus, q1, type="l", main=names(Sample_Data)[ii], ylab="quantile", xlab="", ylim=c(0, max(q1, q0)))
+  mtext(text=expression(tau), side=1, cex=1.5, line=3)
+  lines(taus, q0, col=2)
+
+  abline(h=mean(abundance1), lty=2)
+  abline(h=mean(abundance0), lty=2, col=2)
+
+  legend('topleft', c('quantile X=1', 'mean X=1', 'quantile X=0', 'mean X=0'), col=c(1, 1, 2, 2), lty=c(1, 2, 1, 2), bty='n')
+}
+
+dat = cbind(Y=Sample_Data[, 1], covariates)
+summary(lm(Y~X+Z1+Z2+Z3, data=dat))
+
+dat = cbind(Y=Sample_Data[, 2], covariates)
+summary(lm(Y~X+Z1+Z2+Z3, data=dat))
+
+```
+

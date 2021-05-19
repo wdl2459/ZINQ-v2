@@ -1,0 +1,18 @@
+Package: ZINQ
+Type: Package
+Title: Zero-Inflated Quantile Approach for Microbiome Association Testing 
+Version: 1.0
+Author: Wodan Ling and Michael C. Wu
+Maintainer: Wodan Ling <wling@fredhutch.org>
+Description: This package conducts univariate association test between microbiome data (un-normalized or normalized by any method) and clinical variables (dicrete or quantitative),
+    supporting both unadjusted and adjusted tests.
+License: GPL (>=2)
+Encoding: UTF-8
+LazyData: true
+NeedsCompilation: no
+Imports: quantreg, MASS
+RoxygenNote: 7.1.1
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
