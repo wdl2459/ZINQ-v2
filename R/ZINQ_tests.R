@@ -55,13 +55,13 @@
 #'
 #' @export
 
+library(logistf)
+
 ### marginal tests ###
 
 ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, taus=c(0.1, 0.25, 0.5, 0.75, 0.9), seed=2020){
 
   ## formulas
-
-  # logistic model
 
   # arrange logistic model
   mf.logistic = model.frame(formula.logistic, data=data)
@@ -124,10 +124,14 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
 
   if (single_CorB == T){ # when C is a single covariate, either continuous or binary
 
-    # logistic, wald test
-    mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
-    pvalue.logistic = summary(mod.logistic)$coef[condition.loc+1, 4]
+    # # logistic, wald test
+    # mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
+    # pvalue.logistic = summary(mod.logistic)$coef[condition.loc+1, 4]
 
+    # firth logistic, profile penalized log-likelihood test
+    mod.logistic = logistf(mf.logistic)
+    pvalue.logistic = mod.logistic$prob[condition.loc+1]
+    
     # estimate quantiles of y|y>0 | H0
     rq0 = rq(mf.quantile, tau=taus)
     qpred0 = predict(rq0)
@@ -162,14 +166,24 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
 
   } else { # when C is a set of covariates, or a single covariate with multiple categories
 
-    # logistic, score test
+    # # logistic, score test
+    # if (mul.logistic != T){
+    #   mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
+    #   pvalue.logistic = anova(mod.logistic, test="Rao")$`Pr(>Chi)`[condition.loc+1]
+    # } else {
+    #   mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
+    #   mod.logistic.null = glm(mf.logistic.null, family=binomial(link = 'logit'))
+    #   pvalue.logistic = anova(mod.logistic.null, mod.logistic, test="Rao")$`Pr(>Chi)`[2]
+    # }
+    
+    # firth logistic, profile penalized log-likelihood test
     if (mul.logistic != T){
-      mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
+      mod.logistic = logistf(mf.logistic)
       pvalue.logistic = anova(mod.logistic, test="Rao")$`Pr(>Chi)`[condition.loc+1]
     } else {
-      mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
-      mod.logistic.null = glm(mf.logistic.null, family=binomial(link = 'logit'))
-      pvalue.logistic = anova(mod.logistic.null, mod.logistic, test="Rao")$`Pr(>Chi)`[2]
+      mod.logistic = logistf(mf.logistic)
+      mod.logistic.null = logistf(mf.logistic.null)
+      pvalue.logistic = anova(mod.logistic, mod.logistic.null)$pval
     }
 
     # estimate quantiles of y|y>0 | H0
