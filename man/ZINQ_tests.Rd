@@ -2,7 +2,7 @@
 % Please edit documentation in R/ZINQ_tests.R
 \name{ZINQ_tests}
 \alias{ZINQ_tests}
-\title{Marginal tests for the logistic and quantile regression components}
+\title{Marginal tests for the Firth logistic and quantile regression components}
 \usage{
 ZINQ_tests(
   formula.logistic,
@@ -15,9 +15,9 @@ ZINQ_tests(
 )
 }
 \arguments{
-\item{formula.logistic}{The full model of logistic regression, e.g., Y ~ X + Y + Z, where Y is zero-inflated.}
+\item{formula.logistic}{The full model of Firth logistic regression, e.g., Y ~ X + Y + Z, where Y is zero-inflated.}
 
-\item{formula.quantile}{The full model of quantile regression, can be different from formula.logistic.}
+\item{formula.quantile}{The full model of quantile regression, can be different from \code{formula.logistic}.}
 
 \item{C}{The name(s) of clinical variable(s) of interest, e.g., "Condition" or c("Condition", "Batch").}
 
@@ -32,15 +32,15 @@ ZINQ_tests(
 \value{
 A list
 \itemize{
-  \item pvalue.logistic - A single p-value from the logistic regression component.
-  \item pvalue.quantile - A length(\code{taus}) by 1 vector, a squence of p-values from the quantile regression component.
+  \item pvalue.logistic - A single p-value from the Firth logistic regression component.
+  \item pvalue.quantile - A length(\code{taus}) by 1 vector, a sequence of p-values from the quantile regression component.
   \item Sigma.hat - A df x length(\code{taus}) by df x length(\code{taus}) matrix, where df is the dimension of \code{C}, the covariance matrix of quantile rank-scores.
   \item zerorate - The proportion of zeroes in Y.
   \item taus - The grid of quantile levels used.
 }
 }
 \description{
-Marginal tests for the logistic and quantile regression components
+Marginal tests for the Firth logistic and quantile regression components
 }
 \details{
 \itemize{
@@ -49,11 +49,10 @@ Marginal tests for the logistic and quantile regression components
           or try adding more extreme levels (e.g., c(0.25, 0.5, 0.75) to c(0.1, 0.25, 0.5, 0.75, 0.9)), with a goal to keep type I error controlled and boost the power;
         for common taxa, start from the default; for rare taxa, start from c(0.25, 0.5, 0.75).
   \item Quantile rank-score test corrected for zero-inflation is used for the quantile regression component.
-  \item If \code{C} is a single continuous or binary covariate, Wald test is used for the logistic regression component, else Rao's score test is used
+  \item Penalized likelihood-ratio test is used for the Firth logistic regression component.
 }
 }
 \examples{
-library(quantreg)
 n = 300
 p <- function(x0, gam0=0.75, gam1=-0.15){
   lc = gam0 + gam1*x0
@@ -70,7 +69,7 @@ ZINQ_tests(formula.logistic=y~x, formula.quantile=y~x, C="x", data=dat)
 }
 \references{
 \itemize{
-  \item Ling, W. et al. (2020+). Powerful and robust non-parametric association testing for microbiome data via a zero-inflated quantile approach (ZINQ)
+  \item Ling, W. et al. (2021). Powerful and robust non-parametric association testing for microbiome data via a zero-inflated quantile approach (ZINQ). Microbiome 9, 181.
   \item Machado, J.A.F., Silva, J.S. (2005). Quantiles for counts. Journal of the American Statistical Association 100(472), 1226–1237.
 }
 }

@@ -12,19 +12,17 @@
 #'   \item \code{taus} must be a subset or equal to the grid used to produce \code{input}.
 #' }
 #'
-#' @return A pvalue, the final p-value of ZINQ
+#' @return A pvalue, the final p-value of ZINQ.
 #'
 #' @references
 #' \itemize{
-#'   \item Ling, W. et al. (2020+). Powerful and robust non-parametric association testing for microbiome data via a zero-inflated quantile approach (ZINQ).
+#'   \item Ling, W. et al. (2021). Powerful and robust non-parametric association testing for microbiome data via a zero-inflated quantile approach (ZINQ). Microbiome 9, 181.
 #'   \item He, Z. et al. (2017). Unified sequence-based association tests allowing for multiple functional annotations and meta-analysis of noncoding variation in metabochip data. The American Journal of HumanGenetics 101(3), 340–352.
 #'   \item Lee, S. et al. (2012). Optimal tests for rare variant effects in sequencing association studies. Biostatistics 13(4), 762–775.
-#'   \item Liu, Y., Xie, J. (2019). Cauchy combination test: a powerful test with analytic p-value calculation under arbitrary dependency structures. Journal of the American Statistical Association, 1–18
+#'   \item Liu, Y., Xie, J. (2019). Cauchy combination test: a powerful test with analytic p-value calculation under arbitrary dependency structures. Journal of the American Statistical Association, 1–18.
 #' }
 #'
 #' @examples
-#' library(quantreg)
-#' library(MASS)
 #' n = 300
 #' p <- function(x0, gam0=0.75, gam1=-0.15){
 #'   lc = gam0 + gam1*x0
@@ -129,6 +127,7 @@ ZINQ_combination <- function(input, method="MinP", taus=c(0.1, 0.25, 0.5, 0.75, 
 
     # final p-value
     pvalue = 1 - pcauchy(stats.cauchy)
+    names(pvalue) = NULL
 
   }
 
