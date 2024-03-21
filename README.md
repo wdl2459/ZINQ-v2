@@ -29,4 +29,4 @@ library(ZINQ)
 
 v2.0 updates the logistic component to Firth logistic regression, in order to mitigate the bias when the presence-absence status of taxa is imbalanced across the different groups of the interested clinical variable(s).
 
-Details can be found in the manual: https://github.com/wdl2459/ZINQ-v2/blob/dev/ZINQ_2.0.pdf.
+Details can be found in the manual: https://github.com/wdl2459/ZINQ-v2/blob/main/ZINQ_2.0.pdf.
