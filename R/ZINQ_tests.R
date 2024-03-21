@@ -1,11 +1,12 @@
 
-#' Marginal tests for the logistic and quantile regression components
+#' Marginal tests for the Firth logistic and quantile regression components
 #'
 #' @import quantreg
 #' @import MASS
+#' @import logistf
 #'
-#' @param formula.logistic The full model of logistic regression, e.g., Y ~ X + Y + Z, where Y is zero-inflated.
-#' @param formula.quantile The full model of quantile regression, can be different from formula.logistic.
+#' @param formula.logistic The full model of Firth logistic regression, e.g., Y ~ X + Y + Z, where Y is zero-inflated.
+#' @param formula.quantile The full model of quantile regression, can be different from \code{formula.logistic}.
 #' @param C The name(s) of clinical variable(s) of interest, e.g., "Condition" or c("Condition", "Batch").
 #' @param y_CorD An indicator: use "D" if Y is count, a perturbation from U(0, 1) will be added to the response; use "C" if Y is continuous; default is "C".
 #' @param data A data.frame: better cleaned and processed, use numeric for Y and binary covariates, use factor for multi-class discrete covariates.
@@ -19,13 +20,13 @@
 #'           or try adding more extreme levels (e.g., c(0.25, 0.5, 0.75) to c(0.1, 0.25, 0.5, 0.75, 0.9)), with a goal to keep type I error controlled and boost the power;
 #'         for common taxa, start from the default; for rare taxa, start from c(0.25, 0.5, 0.75).
 #'   \item Quantile rank-score test corrected for zero-inflation is used for the quantile regression component.
-#'   \item If \code{C} is a single continuous or binary covariate, Wald test is used for the logistic regression component, else Rao's score test is used
+#'   \item Penalized likelihood-ratio test is used for the Firth logistic regression component.
 #' }
 #'
 #' @return A list
 #' \itemize{
-#'   \item pvalue.logistic - A single p-value from the logistic regression component.
-#'   \item pvalue.quantile - A length(\code{taus}) by 1 vector, a squence of p-values from the quantile regression component.
+#'   \item pvalue.logistic - A single p-value from the Firth logistic regression component.
+#'   \item pvalue.quantile - A length(\code{taus}) by 1 vector, a sequence of p-values from the quantile regression component.
 #'   \item Sigma.hat - A df x length(\code{taus}) by df x length(\code{taus}) matrix, where df is the dimension of \code{C}, the covariance matrix of quantile rank-scores.
 #'   \item zerorate - The proportion of zeroes in Y.
 #'   \item taus - The grid of quantile levels used.
@@ -33,13 +34,12 @@
 #'
 #' @references
 #' \itemize{
-#'   \item Ling, W. et al. (2020+). Powerful and robust non-parametric association testing for microbiome data via a zero-inflated quantile approach (ZINQ)
+#'   \item Ling, W. et al. (2021). Powerful and robust non-parametric association testing for microbiome data via a zero-inflated quantile approach (ZINQ). Microbiome 9, 181.
 #'   \item Machado, J.A.F., Silva, J.S. (2005). Quantiles for counts. Journal of the American Statistical Association 100(472), 1226–1237.
 #' }
 #'
 #'
 #' @examples
-#' library(quantreg)
 #' n = 300
 #' p <- function(x0, gam0=0.75, gam1=-0.15){
 #'   lc = gam0 + gam1*x0
@@ -61,7 +61,8 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
 
   ## formulas
 
-  # logistic model
+
+  # Firth logistic model
 
   # arrange logistic model
   mf.logistic = model.frame(formula.logistic, data=data)
@@ -70,20 +71,6 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
   formula.logistic = update(formula.logistic, b ~ .)
   data.logistic = cbind(data, b)
   mf.logistic = model.frame(formula.logistic, data=data.logistic)
-
-  # locate C in logistic model
-  namesx = all.vars(formula.logistic)[-1]
-  condition.loc = which(namesx %in% C)
-
-  # arrange logistic null model if C is not a single covariate
-  if (length(condition.loc) > 1){
-    mul.logistic = T
-    namesx.null = setdiff(namesx, C)
-    if (length(namesx.null) == 0){
-      formula.logistic.null = as.formula( "b ~ 1" )
-    } else formula.logistic.null = as.formula( paste( "b ~", paste(namesx.null, collapse = "+") ) )
-    mf.logistic.null = model.frame(formula.logistic.null, data=data.logistic)
-  } else mul.logistic = F
 
 
   # quantile model
@@ -102,7 +89,7 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
   formula.quantile = as.formula( paste( namey, "~", paste(C, collapse = "+") ) )
   mf.quantile = model.frame(formula.quantile, data=data.quantile)
   c = model.matrix(attr(mf.quantile, "terms"), data=mf.quantile)[, -1]
-  if (is.null(dim(c))){ # determine whether C is a single covariate, also continuous or binary
+  if (is.null(dim(c))){ # determine whether C is a single covariate (either continuous or binary)
     single_CorB=T
   } else single_CorB=F
 
@@ -114,6 +101,22 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
   z = model.matrix(attr(mf.quantile, "terms"), data=mf.quantile)
 
 
+  # Firth logistic model (cont.)
+
+  # locate C in logistic model
+  namesx = all.vars(formula.logistic)[-1]
+  condition.loc = which(namesx %in% C)
+
+  # arrange logistic null model if C is not a single covariate (either continuous or binary)
+  if (single_CorB == F){
+    namesx.null = setdiff(namesx, C)
+    if (length(namesx.null) == 0){
+      formula.logistic.null = as.formula( "b ~ 1" )
+    } else formula.logistic.null = as.formula( paste( "b ~", paste(namesx.null, collapse = "+") ) )
+    mf.logistic.null = model.frame(formula.logistic.null, data=data.logistic)
+  }
+
+
   ## set up parameters
   m = length(y) # total sample size
   width = length(taus) # size of tau
@@ -122,11 +125,11 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
 
   ## compute p-values from the marginal tests
 
-  if (single_CorB == T){ # when C is a single covariate, either continuous or binary
+  if (single_CorB == T){ # when C is a single covariate (either continuous or binary)
 
-    # logistic, wald test
-    mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
-    pvalue.logistic = summary(mod.logistic)$coef[condition.loc+1, 4]
+    # Firth logistic, penalized log-likelihood test
+    mod.logistic = logistf(mf.logistic)
+    pvalue.logistic = mod.logistic$prob[condition.loc+1]
 
     # estimate quantiles of y|y>0 | H0
     rq0 = rq(mf.quantile, tau=taus)
@@ -162,15 +165,10 @@ ZINQ_tests <- function(formula.logistic, formula.quantile, C, y_CorD="C", data, 
 
   } else { # when C is a set of covariates, or a single covariate with multiple categories
 
-    # logistic, score test
-    if (mul.logistic != T){
-      mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
-      pvalue.logistic = anova(mod.logistic, test="Rao")$`Pr(>Chi)`[condition.loc+1]
-    } else {
-      mod.logistic = glm(mf.logistic, family=binomial(link = 'logit'))
-      mod.logistic.null = glm(mf.logistic.null, family=binomial(link = 'logit'))
-      pvalue.logistic = anova(mod.logistic.null, mod.logistic, test="Rao")$`Pr(>Chi)`[2]
-    }
+    # Firth logistic, penalized log-likelihood test
+    mod.logistic = logistf(mf.logistic)
+    mod.logistic.null = logistf(mf.logistic.null)
+    pvalue.logistic = anova(mod.logistic, mod.logistic.null)$pval
 
     # estimate quantiles of y|y>0 | H0
     rq0 = rq(mf.quantile, tau=taus)

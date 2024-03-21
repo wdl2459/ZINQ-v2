@@ -29,11 +29,13 @@ knitr::opts_chunk$set(
 
 # Overview
 
-The ZINQ package (v1.0) contains functions that conduct univariate association test between microbiome data and clinical variable(s). The microbiome data can be unnormalized
+The ZINQ package (v2.0) contains functions that conduct association testing between individual taxa of microbiome and clinical variable(s). The microbiome data can be unnormalized
 or normalized by any existing method, such as rarefaction, TSS, CSS, etc.. The clinical variable(s) can be a single binary, multi-class discrete or continuous variable, or a set
 of variables consisting of any type of the aformentioned variables. Both unadjusted and adjusted tests can be implemented. 
 
-The following packages are required for functions and examples in the ZINQ package: quantreg, MASS, both are available on CRAN.
+In addition, the ZINQ package (v2.0) updates the logistic component to Firth logistic regression, in order to mitigate the bias when the presence-absence status of taxa is imbalanced across the different groups of the interested clinical variable(s).
+
+The following packages are required for functions and examples in the ZINQ package: quantreg, MASS, logistf, all are available on CRAN.
 
 ```{r setup}
 library(ZINQ)
@@ -44,17 +46,17 @@ library(ZINQ)
 
 ## Sanity check
 
-It is recommended to do sanity check using **ZINQ_check** before applying ZINQ. The inputs are the un-normalized taxa read count table and metadata. It it is necessary, the function will print warnings when
+It is recommended to do sanity check using **ZINQ_check** before applying ZINQ. The inputs are the un-normalized taxa read count table and metadata. The function will print warnings when
 
 * Library size is a confounder of the variable(s) of interest. ZINQ might not properly control type I error, since it treats zeroes and non-zeroes differently. 
 * For each taxon:
     + All read counts are zero. ZINQ will return a singularity error. 
     + There are limited non-zero read counts (<30 or <15). Recommended settings of ZINQ will be provided. 
-    + There is a perfect separation, e.g., there are all zeroes in one group (case or control). ZINQ will return NA. 
+    + There is a perfect separation, e.g., there are all zeroes in one group (case or control), which is an extreme case of imbalance. Use ZINQ with caution. 
 
 Type **warnings()** after the sanity check to read the warnings. The warnings are recommendations for applying ZINQ to the data.
 
-The sanity check is mainly about zero inflation. Most normalizations will keep the original zeroes, thus investigaing the un-normalized taxa read count table provides sufficient clues to use ZINQ. ZINQ will also return singularity errors when too many covariates are specified, as in other regression frameworks. For more details, refer to the .pdf manual.
+The sanity check is mainly about zero inflation. Most normalization methods will keep the original zeroes, thus investigating the un-normalized taxa read count table provides sufficient clues to use ZINQ. ZINQ will also return singularity errors when too many covariates are specified, as in other regression frameworks. For more details, refer to the .pdf manual.
 
 
 ## Sample data
@@ -68,7 +70,7 @@ summary(Sample_Data)
 
 ## Use of ZINQ_tests
 
-We first use ZINQ_tests to conduct marginal test for logistic and quantile regression components, for each of the two taxa.
+We first use ZINQ_tests to conduct marginal tests in the Firth logistic and quantile regression components, for each of the two taxa.
 
 ```{r}
 covariates = Sample_Data[, -c(1:2)]
